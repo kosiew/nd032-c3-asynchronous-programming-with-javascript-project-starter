@@ -319,7 +319,8 @@ const url = getUrl(SERVER);
 function getApi(endpoint) {
 	const urlEndpoint = url(endpoint);
 	return fetch(urlEndpoint)
-	    .then(response => response.json());
+	    .then(response => response.json())
+		.catch(err => console.log(`Problem with ${endpoint} request:`, err));
 }
 
 
@@ -364,6 +365,8 @@ function createRace(player_id, track_id) {
 
 function getRace(id) {
 	// GET request to `${SERVER}/api/races/${id}`
+	const endpoint = 'races/${id}';
+	return getApi(endpoint);
 }
 
 function startRace(id) {
