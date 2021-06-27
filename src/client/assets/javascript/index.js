@@ -307,6 +307,22 @@ function renderAt(element, html) {
 
 const SERVER = 'http://localhost:8000'
 
+function getUrl(server) {
+	return (endpoint) => {
+		return `${server}/api/${endpoint}`;
+	}
+}
+
+const url = getUrl(SERVER);
+
+
+function getApi(endpoint) {
+	const urlEndpoint = url(endpoint);
+	return fetch(urlEndpoint)
+	    .then(response => response.json());
+}
+
+
 function defaultFetchOpts() {
 	return {
 		mode: 'cors',
@@ -321,6 +337,8 @@ function defaultFetchOpts() {
 
 function getTracks() {
 	// GET request to `${SERVER}/api/tracks`
+	const endpoint = 'tracks';
+	return getApi(endpoint);
 }
 
 function getRacers() {
