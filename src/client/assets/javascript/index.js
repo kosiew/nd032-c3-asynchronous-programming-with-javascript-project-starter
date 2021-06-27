@@ -182,7 +182,7 @@ function renderRacerCars(racers) {
 
 	return `
 		<ul id="racers">
-			${reuslts}
+			${results}
 		</ul>
 	`
 }
@@ -343,6 +343,8 @@ function getTracks() {
 
 function getRacers() {
 	// GET request to `${SERVER}/api/cars`
+	const endpoint = 'cars';
+	return getApi(endpoint);
 }
 
 function createRace(player_id, track_id) {
