@@ -7,10 +7,87 @@ var store = {
 	race_id: undefined,
 }
 
+const d = (function () {
+	const debug = true;
+
+	function log(message, level=0) {
+		if (debug) {
+			const styles = [
+				'border: 1px solid #3E0E02'
+				, 'color: white'
+				, 'display: block'
+				, 'text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3)'
+				, 'box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset, 0 5px 3px -5px rgba(0, 0, 0, 0.5), 0 -13px 5px -10px rgba(255, 255, 255, 0.4) inset'
+				, 'line-height: 20px'
+				, 'text-align: center'
+				, 'font-weight: bold'
+			];
+	
+			if (level==0) {
+				styles.push('background: linear-gradient(#060dd3, #040647)');
+			} else {
+				styles.push('background: linear-gradient(#D33106, #571402)');
+			}
+			
+			const _styles = styles.join(';');
+			console.log(`%c ${message}`, _styles);
+		}
+	}
+
+	function group(groupName = 'default') {
+		if (debug) {
+			console.group(groupName);
+		}
+	}
+
+	function groupEnd() {
+		if (debug) {
+			console.groupEnd();
+		}
+	}
+
+	function table(obj) {
+		if (debug) {
+			console.table(obj);
+		}
+	}
+		
+	return {
+		log: log,
+		group: group,
+		groupEnd: groupEnd,
+		table: table
+
+	};
+})();
+
+
+
+const updateStore = (store, newState) => {
+    d.group('updateStore');
+    d.table(newState);
+    store = Object.assign(store, newState)
+    d.groupEnd();
+}
+
+function updateHOF(store) {
+    return function(newState) {
+		d.group('updateStore');
+		d.table(newState);
+        updateStore(store, newState);
+		d.groupEnd();
+    }
+}
+
+const updateStoreHOF = updateHOF(store);
+
+
 // We need our javascript to wait until the DOM is loaded
 document.addEventListener("DOMContentLoaded", function() {
+	d.group('dom loaded');
 	onPageLoad()
 	setupClickHandlers()
+	d.groupEnd();
 })
 
 async function onPageLoad() {
@@ -19,12 +96,14 @@ async function onPageLoad() {
 			.then(tracks => {
 				const html = renderTrackCards(tracks)
 				renderAt('#tracks', html)
+				updateStoreHOF({'tracks': tracks});
 			})
 
 		getRacers()
 			.then((racers) => {
 				const html = renderRacerCars(racers)
-				renderAt('#racers', html)
+				renderAt('#racers', html);
+				updateStoreHOF({'racers': racers});
 			})
 	} catch(error) {
 		console.log("Problem getting tracks and racers ::", error.message)
@@ -33,16 +112,24 @@ async function onPageLoad() {
 }
 
 function setupClickHandlers() {
+	d.log('setupClickHandler');
 	document.addEventListener('click', function(event) {
-		const { target } = event
+		const { target } = event;
 
+		d.group('clickHandler');
+		d.group('click target');
+		const classList = target.classList;
+		d.table(classList);
+		d.groupEnd();
 		// Race track form field
 		if (target.matches('.card.track')) {
+			d.log('selectTrack');
 			handleSelectTrack(target)
 		}
 
 		// Podracer form field
 		if (target.matches('.card.podracer')) {
+			d.log('selectRacer');
 			handleSelectPodRacer(target)
 		}
 
@@ -51,13 +138,16 @@ function setupClickHandlers() {
 			event.preventDefault()
 	
 			// start race
+			d.log('createRace');
 			handleCreateRace()
 		}
 
 		// Handle acceleration click
 		if (target.matches('#gas-peddle')) {
+			d.log('accelerate');
 			handleAccelerate(target)
 		}
+		d.groupEnd();
 
 	}, false)
 }
@@ -75,20 +165,28 @@ async function delay(ms) {
 // This async function controls the flow of the race, add the logic and error handling
 async function handleCreateRace() {
 	// render starting UI
-	renderAt('#race', renderRaceStartView())
+	const {track_id, races, player_id} = store;
+	const tracks = store.tracks;
+	const track = {...tracks[track_id]}; 
+	renderAt('#race', renderRaceStartView(track, races));
 
 	// TODO - Get player_id and track_id from the store
 	
 	// const race = TODO - invoke the API call to create the race, then save the result
-
+	const race = await createRace(player_id, track_id);
+	d.group('created race');
+	d.table(race);
 	// TODO - update the store with the race id
-
+	updateStoreHOF({'race_id': race.ID});
+	d.groupEnd();
 	// The race has been created, now start the countdown
 	// TODO - call the async function runCountdown
+	await runCountdown();
 
 	// TODO - call the async function startRace
-
+	await startRace(race.ID);	
 	// TODO - call the async function runRace
+	await runRace(race.ID);
 }
 
 function runRace(raceID) {
@@ -121,9 +219,17 @@ async function runCountdown() {
 		return new Promise(resolve => {
 			// TODO - use Javascript's built in setInterval method to count down once per second
 
+			const loop = setInterval(
+				() => {
+					document.getElementById('big-numbers').innerHTML = --timer;
+					if (timer == 0) {
+						clearInterval(loop);
+						resolve();
+					}
+				},
+				1000
+			);
 			// run this DOM manipulation to decrement the countdown for the user
-			document.getElementById('big-numbers').innerHTML = --timer
-
 			// TODO - if the countdown is done, clear the interval, resolve the promise, and return
 
 		})
@@ -133,7 +239,7 @@ async function runCountdown() {
 }
 
 function handleSelectPodRacer(target) {
-	console.log("selected a pod", target.id)
+	d.log("selected pod", target.id)
 
 	// remove class selected from all racer options
 	const selected = document.querySelector('#racers .selected')
@@ -145,10 +251,11 @@ function handleSelectPodRacer(target) {
 	target.classList.add('selected')
 
 	// TODO - save the selected racer to the store
+	updateStoreHOF({'player_id': target.id});
 }
 
 function handleSelectTrack(target) {
-	console.log("selected a track", target.id)
+	d.log("selected track", target.id)
 
 	// remove class selected from all track options
 	const selected = document.querySelector('#tracks .selected')
@@ -160,12 +267,16 @@ function handleSelectTrack(target) {
 	target.classList.add('selected')
 
 	// TODO - save the selected track id to the store
+
+	updateStoreHOF({'track_id': target.id});
 	
 }
 
 function handleAccelerate() {
 	console.log("accelerate button clicked")
 	// TODO - Invoke the API call to accelerate
+	const {racer_id} = store;
+	accelerate(racer_id);
 }
 
 // HTML VIEWS ------------------------------------------------
@@ -317,6 +428,7 @@ const url = getUrl(SERVER);
 
 
 function getApi(endpoint) {
+	d.log(`getApi ${endpoint}`);
 	const urlEndpoint = url(endpoint);
 	return fetch(urlEndpoint)
 	    .then(response => response.json())
@@ -360,7 +472,7 @@ function createRace(player_id, track_id) {
 		body: JSON.stringify(body)
 	})
 	.then(res => res.json())
-	.catch(err => console.log("Problem with createRace request::", err))
+	.catch(err => console.log(`Problem with createRace request:: player_id ${player_id} track_id ${track_id}`, err))
 }
 
 function getRace(id) {
@@ -370,12 +482,14 @@ function getRace(id) {
 }
 
 function startRace(id) {
+	d.log('startRace');
+	d.table(store);
 	return fetch(`${SERVER}/api/races/${id}/start`, {
 		method: 'POST',
 		...defaultFetchOpts(),
 	})
 	.then(res => res.json())
-	.catch(err => console.log("Problem with getRace request::", err))
+	.catch(err => console.log(`Problem with startRace request:: id ${id}`, err))
 }
 
 function accelerate(id) {
@@ -387,5 +501,5 @@ function accelerate(id) {
 		...defaultFetchOpts(),
 	})
 	.then(res => res.json())
-	.catch(err => console.log("Problem with accelerate request::", err))
+	.catch(err => console.log(`Problem with accelerate request:: id ${id}`, err))
 }
