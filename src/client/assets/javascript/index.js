@@ -176,17 +176,18 @@ async function handleCreateRace() {
 	const race = await createRace(player_id, track_id);
 	d.group('created race');
 	d.table(race);
+	const raceId = parseInt(race.ID) - 1;
 	// TODO - update the store with the race id
-	updateStoreHOF({'race_id': race.ID});
+	updateStoreHOF({'race_id': raceId});
 	d.groupEnd();
 	// The race has been created, now start the countdown
 	// TODO - call the async function runCountdown
 	await runCountdown();
 
 	// TODO - call the async function startRace
-	await startRace(race.ID);	
+	await startRace(raceId);	
 	// TODO - call the async function runRace
-	await runRace(race.ID);
+	await runRace(raceId);
 }
 
 function runRace(raceID) {
