@@ -111,10 +111,16 @@ async function onPageLoad() {
 	}
 }
 
+function startRaceMessage(message) {
+	document.querySelector('#submit-create-race').innerText = message;
+}
+
+
 function setupClickHandlers() {
 	d.log('setupClickHandler');
 	document.addEventListener('click', function(event) {
 		const { target } = event;
+		const {track_id, player_id} = store;
 
 		d.group('clickHandler');
 		d.group('click target');
@@ -124,22 +130,34 @@ function setupClickHandlers() {
 		// Race track form field
 		if (target.matches('.card.track')) {
 			d.log('selectTrack');
-			handleSelectTrack(target)
+			handleSelectTrack(target);
+			if (player_id != undefined) {
+				startRaceMessage('Start Race');
+			}
 		}
 
 		// Podracer form field
 		if (target.matches('.card.podracer')) {
 			d.log('selectRacer');
-			handleSelectPodRacer(target)
+			handleSelectPodRacer(target);
+			if (track_id != undefined) {
+				startRaceMessage('Start Race');
+			}
+
 		}
 
 		// Submit create race form
 		if (target.matches('#submit-create-race')) {
 			event.preventDefault()
-	
-			// start race
-			d.log('createRace');
-			handleCreateRace()
+
+			if (track_id == undefined || player_id == undefined) {
+				const message = 'Please select track and racer, then click here again';
+				startRaceMessage(message);
+			} else {
+				// start race
+				d.log('createRace');
+				handleCreateRace()
+			}
 		}
 
 		// Handle acceleration click
